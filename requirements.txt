@@ -5,3 +5,5 @@ supabase==2.4.5
 python-dotenv==1.0.1
 pydantic==2.7.4
 pydantic-settings==2.2.1
+faiss-cpu==1.7.4
+tiktoken==0.7.0
