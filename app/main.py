@@ -38,47 +38,82 @@ async def health():
 
 
 @app.get("/", response_class=HTMLResponse)
-async def root():
+def root():
     return """
+    <!DOCTYPE html>
     <html>
-        <head>
-            <title>Piroxeno AI API</title>
-            <style>
-                body {
-                    font-family: Arial, sans-serif;
-                    background-color: #0f172a;
-                    color: white;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    height: 100vh;
-                    margin: 0;
-                }
-                .card {
-                    text-align: center;
-                }
-                h1 {
-                    margin-bottom: 10px;
-                }
-                .status {
-                    color: #22c55e;
-                    font-weight: bold;
-                }
-                .endpoint {
-                    margin-top: 20px;
-                    color: #94a3b8;
-                }
-            </style>
-        </head>
-        <body>
-            <div class="card">
-                <h1>🧠 Piroxeno AI API</h1>
-                <div class="status">● Online</div>
-                <div class="endpoint">
-                    Endpoint: POST /chat<br>
-                    Health: GET /health
-                </div>
+    <head>
+        <title>Piroxeno AI API</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            body {
+                margin: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                background: radial-gradient(circle at center, #1e293b 0%, #0f172a 60%);
+                color: #f8fafc;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                height: 100vh;
+                text-align: center;
+            }
+            .card {
+                padding: 40px;
+                border-radius: 16px;
+                background: rgba(30, 41, 59, 0.6);
+                backdrop-filter: blur(10px);
+                box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+            }
+            h1 {
+                font-size: 32px;
+                margin-bottom: 10px;
+            }
+            .status {
+                margin: 15px 0;
+                font-weight: 600;
+                font-size: 16px;
+            }
+            .dot {
+                height: 10px;
+                width: 10px;
+                border-radius: 50%;
+                display: inline-block;
+                margin-right: 8px;
+            }
+            code {
+                color: #38bdf8;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <h1>🧠 Piroxeno AI API</h1>
+            <div class="status" id="status">
+                <span class="dot" style="background:#facc15;"></span>
+                Checking status...
             </div>
-        </body>
+            <p>Endpoint: <code>POST /chat</code></p>
+            <p>Health: <code>GET /health</code></p>
+        </div>
+
+        <script>
+            fetch('/health')
+                .then(res => res.json())
+                .then(data => {
+                    const statusEl = document.getElementById('status');
+                    statusEl.innerHTML = `
+                        <span class="dot" style="background:#22c55e;"></span>
+                        Online
+                    `;
+                })
+                .catch(() => {
+                    const statusEl = document.getElementById('status');
+                    statusEl.innerHTML = `
+                        <span class="dot" style="background:#ef4444;"></span>
+                        Offline
+                    `;
+                });
+        </script>
+    </body>
     </html>
     """
