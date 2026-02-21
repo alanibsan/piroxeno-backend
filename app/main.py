@@ -180,7 +180,7 @@ def widget():
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "x-api-key": "YOUR_API_KEY_HERE"
+                "x-api-key": "58BElXh6UG6P9J5txHzDQfl_xOyqPyCSykJ_fYUS28Q"
             },
             body: JSON.stringify({ question })
         });
