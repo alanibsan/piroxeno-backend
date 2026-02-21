@@ -43,7 +43,7 @@ def root():
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Piroxeno AI API</title>
+        <title>Piroxeno AI API</title>º
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
             body {
@@ -114,7 +114,10 @@ def root():
                     `;
                 });
         </script>
-        <script src="/widget.js" defer></script>
+        <script 
+            src="https://api.piroxeno.com/widget.js"
+            data-api-key="rV76YaXDQx4DlYrTSIpGgo10Ku6cxYFrqX-Dy1E9jSc">
+        </script>
     </body>
     </html>
     """
@@ -124,6 +127,12 @@ from fastapi.responses import Response
 def widget():
     js_code = """
 (function() {
+    const scriptTag = document.currentScript;
+    const apiKey = scriptTag.getAttribute("data-api-key");
+    if (!apiKey) {
+    console.error("Piroxeno: Missing data-api-key attribute.");
+    return;
+}
     if (window.PiroxenoWidget) return;
 
     const PRIMARY_COLOR = "#22c55e";
@@ -226,7 +235,7 @@ def widget():
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "x-api-key": "58BElXh6UG6P9J5txHzDQfl_xOyqPyCSykJ_fYUS28Q"
+                    "x-api-key": apiKey
                 },
                 body: JSON.stringify({ question })
             });
