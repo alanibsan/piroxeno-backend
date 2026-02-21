@@ -114,7 +114,7 @@ def root():
                     `;
                 });
         </script>
-        <script> src="/widget.js"></script>
+        <script src="/widget.js" defer></script>
     </body>
     </html>
     """
