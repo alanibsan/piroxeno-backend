@@ -2,12 +2,12 @@ from datetime import datetime
 from app.db import supabase
 
 
-def get_client_by_api_key(api_key: str):
+def get_client_by_api_key_hash(api_key_hash: str):
     response = (
         supabase
         .table("clients")
         .select("*")
-        .eq("api_key", api_key)
+        .eq("api_key_hash", api_key_hash)
         .limit(1)
         .execute()
     )
