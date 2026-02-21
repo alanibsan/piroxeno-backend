@@ -114,6 +114,82 @@ def root():
                     `;
                 });
         </script>
+        <script> src="/widget.js"></script>
     </body>
     </html>
     """
+from fastapi.responses import Response
+
+@app.get("/widget.js")
+def widget():
+    js_code = """
+(function() {
+    if (window.PiroxenoWidget) return;
+
+    const container = document.createElement("div");
+    container.style.position = "fixed";
+    container.style.bottom = "20px";
+    container.style.right = "20px";
+    container.style.width = "350px";
+    container.style.height = "500px";
+    container.style.background = "#1e293b";
+    container.style.borderRadius = "16px";
+    container.style.boxShadow = "0 20px 60px rgba(0,0,0,0.5)";
+    container.style.display = "flex";
+    container.style.flexDirection = "column";
+    container.style.overflow = "hidden";
+    container.style.zIndex = "9999";
+
+    container.innerHTML = `
+        <div style="padding:15px;background:#0f172a;color:white;font-weight:600;">
+            🧠 Piroxeno AI
+        </div>
+        <div id="messages" style="flex:1;padding:10px;overflow:auto;color:white;font-size:14px;"></div>
+        <div style="display:flex;border-top:1px solid #334155;">
+            <input id="input" placeholder="Ask something..." 
+                style="flex:1;padding:10px;border:none;outline:none;background:#1e293b;color:white;">
+            <button id="send" style="padding:10px;background:#22c55e;border:none;color:white;">
+                Send
+            </button>
+        </div>
+    `;
+
+    document.body.appendChild(container);
+
+    const input = document.getElementById("input");
+    const send = document.getElementById("send");
+    const messages = document.getElementById("messages");
+
+    function addMessage(text, align="left") {
+        const msg = document.createElement("div");
+        msg.style.marginBottom = "8px";
+        msg.style.textAlign = align;
+        msg.innerText = text;
+        messages.appendChild(msg);
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    send.onclick = async function() {
+        const question = input.value;
+        if (!question) return;
+
+        addMessage(question, "right");
+        input.value = "";
+
+        const res = await fetch("https://api.piroxeno.com/chat", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-api-key": "YOUR_API_KEY_HERE"
+            },
+            body: JSON.stringify({ question })
+        });
+
+        const data = await res.json();
+        addMessage(data.answer);
+    };
+
+    window.PiroxenoWidget = true;
+})();
+"""
+    return Response(content=js_code, media_type="application/javascript")
