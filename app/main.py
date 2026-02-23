@@ -6,7 +6,8 @@ from app.core.logging_config import setup_logging
 from app.core.request_middleware import logging_middleware
 from app.routes.metrics import router as metrics_router
 from fastapi.responses import HTMLResponse
-
+from app.routes.demo import router as demo_router
+app.include_router(demo_router)
 
 # 🔥 Inicializar logging ANTES de crear app
 setup_logging()
