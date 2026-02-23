@@ -7,7 +7,7 @@ from app.core.request_middleware import logging_middleware
 from app.routes.metrics import router as metrics_router
 from fastapi.responses import HTMLResponse
 from app.routes.demo import router as demo_router
-app.include_router(demo_router)
+
 
 # 🔥 Inicializar logging ANTES de crear app
 setup_logging()
@@ -31,7 +31,7 @@ app.add_middleware(
 
 app.include_router(chat_router)
 app.include_router(metrics_router)
-
+app.include_router(demo_router)
 @app.get("/health")
 async def health():
     return {"status": "ok"}
