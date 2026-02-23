@@ -4,7 +4,6 @@ from app.db import supabase
 
 router = APIRouter()
 
-
 class DemoRequest(BaseModel):
     first_name: str
     last_name: str
@@ -17,14 +16,17 @@ class DemoRequest(BaseModel):
 @router.post("/request-demo")
 async def request_demo(data: DemoRequest):
 
-    response = (
-        supabase
-        .table("demo_requests")
-        .insert(data.dict())
-        .execute()
-    )
+    try:
+        result = supabase.table("demo_requests").insert({
+            "first_name": data.first_name,
+            "last_name": data.last_name,
+            "phone": data.phone,
+            "email": data.email,
+            "job_title": data.job_title,
+            "company": data.company,
+        }).execute()
 
-    if response.error:
-        raise HTTPException(status_code=500, detail="Could not save request")
+        return {"success": True}
 
-    return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
