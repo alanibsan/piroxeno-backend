@@ -36,8 +36,8 @@ async def request_demo(data: DemoRequest):
                 "Content-Type": "application/json"
             },
             json={
-                "from": "Piroxeno <onboarding@piroxeno.com>",
-                "to": "tuemail@tuempresa.com",
+                "from": "Demo Request <alan@leads.piroxeno.com>",
+                "to": "ibarrasantoyo.a@gmail.com",
                 "subject": "🚀 New Demo Request",
                 "html": f"""
                 <h2>New Demo Request</h2>
