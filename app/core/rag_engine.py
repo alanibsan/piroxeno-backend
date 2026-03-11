@@ -3,6 +3,7 @@ from app.core.semantic_search import search
 from app.config import settings
 import logging
 import time
+from pathlib import Path
 
 from app.core.request_context import get_request_id, get_client_slug
 
@@ -11,31 +12,69 @@ logger = logging.getLogger("rag")
 client = OpenAI(api_key=settings.openai_api_key)
 
 MAX_CHUNKS = 5
+MAX_CONTEXT_CHARS = 6000
+
+BASE_DIR = Path("clients")
+
+
+def load_client_prompt(client_slug: str):
+
+    prompt_path = BASE_DIR / client_slug / "prompt.txt"
+
+    if prompt_path.exists():
+        return prompt_path.read_text(encoding="utf-8")
+
+    # fallback prompt
+    return """
+Eres un asistente genérico. Este prompt solo se activa si el cliente no tiene un prompt personalizado o está fallando.
+
+INSTRUCCIONES OBLIGATORIAS:
+- Ahora mismo esto está en testing.
+- Solo responde exactamente con la palabra: TESTING
+"""
 
 
 def build_context(chunks):
+
     parts = []
+    total_chars = 0
+
     for i, c in enumerate(chunks, 1):
+
+        text = c["text"]
+
+        if total_chars + len(text) > MAX_CONTEXT_CHARS:
+            break
+
         parts.append(
             f"[Fuente {i}]\n"
             f"Título: {c.get('title', '')}\n"
             f"URL: {c.get('url', '')}\n"
-            f"Contenido:\n{c['text']}"
+            f"Contenido:\n{text}"
         )
+
+        total_chars += len(text)
+
     return "\n\n".join(parts)
 
 
 def build_sources(chunks):
+
     seen = set()
     sources = []
+
     for c in chunks:
-        if c["url"] not in seen:
-            seen.add(c["url"])
-            sources.append(c["url"])
+        url = c.get("url")
+
+        if url and url not in seen:
+            seen.add(url)
+            sources.append(url)
+
     return sources
 
 
-def ask(client_id: str, question: str):
+async def ask(client_id: str, question: str):
+
     start_time = time.time()
 
     request_id = get_request_id()
@@ -51,7 +90,9 @@ def ask(client_id: str, question: str):
 
     chunks = search(client_id, question)
 
+    # ⚡ SI NO HAY CHUNKS → usar solo el prompt
     if not chunks:
+
         logger.info(
             "rag_no_chunks_found",
             extra={
@@ -59,22 +100,19 @@ def ask(client_id: str, question: str):
                 "client_slug": client_slug,
             },
         )
-        return "No dispongo de esa información.", []
 
-    context = build_context(chunks[:MAX_CHUNKS])
-    sources = build_sources(chunks)
+        context = ""
+        sources = []
+
+    else:
+
+        context = build_context(chunks[:MAX_CHUNKS])
+        sources = build_sources(chunks)
+
+    client_prompt = load_client_prompt(client_slug)
 
     prompt = f"""
-Eres un asistente de atención al cliente de una clínica oftalmológica.
-
-INSTRUCCIONES OBLIGATORIAS:
-- Usa ÚNICAMENTE la información del contexto.
-- No completes con conocimiento externo.
-- No hagas suposiciones.
-- Si la respuesta no está explícitamente en el contexto, responde exactamente:
-  "No dispongo de esa información."
-- Responde en español neutro.
-- Máximo 120 palabras.
+{client_prompt}
 
 Contexto:
 {context}
@@ -87,7 +125,8 @@ Respuesta:
 
     response = client.responses.create(
         model="gpt-4.1-mini",
-        input=prompt
+        input=prompt,
+        temperature=0
     )
 
     duration = (time.time() - start_time) * 1000
@@ -98,7 +137,7 @@ Respuesta:
             "request_id": request_id,
             "client_slug": client_slug,
             "duration_ms": round(duration, 2),
-            "documents_used": len(chunks[:MAX_CHUNKS]),
+            "documents_used": len(chunks[:MAX_CHUNKS]) if chunks else 0,
         },
     )
 
@@ -114,4 +153,3 @@ Respuesta:
             "duration_ms": round(duration, 2),
         }
     )
-
