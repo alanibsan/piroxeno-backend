@@ -26,24 +26,34 @@ async def chat(
     background_tasks: BackgroundTasks,
     client: dict = Depends(authenticate_client),
 ):
-    # identify client
-    client_slug = client["slug"]
-    set_client_slug(client_slug)
+    try:
+        # 🔐 Identify client
+        client_slug = client["slug"]
+        set_client_slug(client_slug)
 
-    # optional security: validate allowed domain
-    origin = request.headers.get("origin")
-    allowed_domains = client.get("allowed_domains")
+        # 🌐 Optional domain validation
+        origin = request.headers.get("origin")
+        allowed_domains = client.get("allowed_domains")
 
-    if allowed_domains and origin:
-        if origin not in allowed_domains:
-            raise HTTPException(status_code=403, detail="Domain not allowed")
+        if allowed_domains and origin:
+            if origin not in allowed_domains:
+                raise HTTPException(status_code=403, detail="Domain not allowed")
 
-    # main chat handler
-    result = await handle_chat(
-        client_slug=client_slug,
-        question=body.question,
-        session_id=body.session_id,
-        background_tasks=background_tasks,
-    )
+        # 🤖 Main chat handler
+        result = await handle_chat(
+            client_slug=client_slug,
+            question=body.question,
+            session_id=body.session_id,
+            background_tasks=background_tasks,
+        )
 
-    return ChatResponse(**result)
+        return ChatResponse(**result)
+
+    except HTTPException:
+        # Re-throw FastAPI errors as-is
+        raise
+
+    except Exception as e:
+        # Prevent silent 500 crashes
+        print(f"[CHAT ERROR] client={client.get('slug')} error={str(e)}")
+        raise HTTPException(status_code=500, detail="Chat processing error")
