@@ -88,7 +88,24 @@ async def ask(client_id: str, question: str):
         },
     )
 
-    chunks = search(client_id, question)
+    # 🔎 verificar si existe vector store
+    index, metadata = load_index(client_id)
+
+    if index is None:
+
+        logger.info(
+            "rag_prompt_only_mode",
+            extra={
+                "request_id": request_id,
+                "client_slug": client_slug,
+            },
+        )
+
+        chunks = []
+
+    else:
+
+        chunks = search(client_id, question)
 
     # ⚡ SI NO HAY CHUNKS → usar solo el prompt
     if not chunks:
