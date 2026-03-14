@@ -10,7 +10,7 @@ async def authenticate_client(x_api_key: str = Header(None)):
 
     hashed = hash_api_key(x_api_key)
 
-    client = await get_client_by_api_key_hash(hashed)
+    client = get_client_by_api_key_hash(hashed)
 
     if not client:
         raise HTTPException(status_code=403, detail="Invalid or inactive API key")
