@@ -4,6 +4,7 @@ from app.config import settings
 import logging
 import time
 from pathlib import Path
+from app.core.vector_store import load_index
 
 from app.core.request_context import get_request_id, get_client_slug
 
