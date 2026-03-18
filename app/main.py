@@ -125,7 +125,7 @@ def root():
                 });
         </script>
         <script 
-            src="https://api.piroxeno.com/static/widget.js"
+            src="http://api.piroxeno.com/static/widget.js"
             data-api-key="rV76YaXDQx4DlYrTSIpGgo10Ku6cxYFrqX-Dy1E9jSc">
         </script>
     </body>

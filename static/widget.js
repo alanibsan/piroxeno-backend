@@ -42,9 +42,9 @@
     panel.style.width = "360px";
     panel.style.height = "520px";
     panel.style.background = "#0f172a";
-    panel.style.border = "1px solid rgba(255,255,255,0.08)";
+    panel.style.border = "0.5px solid rgba(255,255,255,0.08)";
     panel.style.backdropFilter = "blur(12px)";
-    panel.style.borderRadius = "16px";
+    panel.style.borderRadius = "20px";
     panel.style.boxShadow = "0 20px 60px rgba(0,0,0,0.5)";
     panel.style.display = "none";
     panel.style.flexDirection = "column";
