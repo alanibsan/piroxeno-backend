@@ -102,7 +102,12 @@ def build_history(messages: list[dict]):
     return "\n".join(reversed(parts))
 
 
-async def ask(client_id: str, question: str, history: list[dict] | None = None):
+async def ask(
+    client_id: str,
+    question: str,
+    history: list[dict] | None = None,
+    prompt_override: str | None = None,
+):
 
     start_time = time.time()
 
@@ -153,7 +158,7 @@ async def ask(client_id: str, question: str, history: list[dict] | None = None):
         context = build_context(chunks[:MAX_CHUNKS])
         sources = build_sources(chunks)
 
-    client_prompt = load_client_prompt(client_slug)
+    client_prompt = prompt_override or load_client_prompt(client_slug)
     conversation_history = build_history(history or [])
 
     prompt = f"""Instrucciones del asistente:
