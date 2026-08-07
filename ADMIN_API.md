@@ -39,6 +39,10 @@ Para producción define también:
 ADMIN_SESSION_SECRET=otro_secreto_largo_y_aleatorio
 ```
 
+Si no lo defines, el backend usa `SUPABASE_SERVICE_ROLE_KEY` como fallback
+server-side para firmar sesiones. Aun así es mejor tener `ADMIN_SESSION_SECRET`
+dedicado.
+
 Corre `app/migrations/004_admin_password_auth.sql` en Supabase antes de crear
 usuarios con contraseña.
 

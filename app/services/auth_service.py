@@ -25,7 +25,11 @@ def _b64decode(value: str):
 
 
 def _session_secret():
-    secret = settings.admin_session_secret or settings.admin_api_token
+    secret = (
+        settings.admin_session_secret
+        or settings.admin_api_token
+        or settings.supabase_service_role_key
+    )
     if not secret:
         raise HTTPException(status_code=503, detail="Admin auth is not configured")
     return secret.encode()
