@@ -8,6 +8,7 @@ from pathlib import Path
 from app.core.vector_store import load_index
 
 from app.core.request_context import get_request_id, get_client_slug
+from app.services.client_registry_service import get_registry_client
 
 logger = logging.getLogger("rag")
 
@@ -21,6 +22,14 @@ BASE_DIR = Path("clients")
 
 
 def load_client_prompt(client_slug: str):
+    try:
+        registry_client = get_registry_client(client_slug)
+    except Exception as exc:
+        print(f"[PROMPT WARNING] registry lookup failed for {client_slug}: {exc}")
+        registry_client = None
+
+    if registry_client and registry_client.get("prompt"):
+        return registry_client["prompt"]
 
     prompt_path = BASE_DIR / client_slug / "prompt.txt"
 

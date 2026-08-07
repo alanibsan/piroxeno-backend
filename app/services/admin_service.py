@@ -8,6 +8,12 @@ from app.config import settings
 from app.db import get_supabase
 from app.services.auth_service import hash_password
 from app.services.client_config import load_client_config
+from app.services.client_registry_service import (
+    get_registry_client,
+    list_registry_clients,
+    local_client_row,
+    upsert_registry_client,
+)
 
 
 CLIENTS_DIR = Path("clients")
@@ -58,56 +64,48 @@ def _read_json_file(path: Path, fallback: dict[str, Any]):
 
 
 def _registry_row_from_files(client_slug: str):
-    config_path = _config_path(client_slug)
-    prompt_path = _prompt_path(client_slug)
-    embed_path = _embed_path(client_slug)
-
-    if not config_path.exists() and not prompt_path.exists():
-        return None
-
-    config = _read_json_file(config_path, {})
-    return {
-        "client_slug": client_slug,
-        "config": config,
-        "prompt": prompt_path.read_text(encoding="utf-8") if prompt_path.exists() else "",
-        "embed": embed_path.read_text(encoding="utf-8") if embed_path.exists() else "",
-    }
+    return local_client_row(client_slug)
 
 
 def _upsert_client_registry(client_slug: str):
-    supabase = get_supabase()
-    if supabase is None:
-        return None
-
     payload = _registry_row_from_files(client_slug)
     if payload is None:
         return None
 
     try:
-        response = (
-            supabase.table("client_registry")
-            .upsert(payload, on_conflict="client_slug")
-            .execute()
+        return upsert_registry_client(
+            client_slug=payload["client_slug"],
+            config=payload["config"],
+            prompt=payload["prompt"],
+            embed=payload["embed"],
         )
-        return response.data[0] if response.data else payload
+    except Exception as exc:
+        print(f"[CLIENT REGISTRY WARNING] client={client_slug} error={exc}")
+        return None
+
+
+def _upsert_client_registry_payload(
+    *,
+    client_slug: str,
+    config: dict[str, Any],
+    prompt: str,
+    embed: str,
+):
+    try:
+        return upsert_registry_client(
+            client_slug=client_slug,
+            config=config,
+            prompt=prompt,
+            embed=embed,
+        )
     except Exception as exc:
         print(f"[CLIENT REGISTRY WARNING] client={client_slug} error={exc}")
         return None
 
 
 def _list_registry_clients():
-    supabase = get_supabase()
-    if supabase is None:
-        return []
-
     try:
-        response = (
-            supabase.table("client_registry")
-            .select("client_slug,config,prompt,embed,updated_at")
-            .order("client_slug")
-            .execute()
-        )
-        return response.data or []
+        return list_registry_clients()
     except Exception as exc:
         print(f"[CLIENT REGISTRY WARNING] list error={exc}")
         return []
@@ -167,15 +165,21 @@ def list_clients():
 
 
 def get_client_detail(client_slug: str):
-    config = load_client_config(client_slug)
-    prompt = ""
+    registry_client = None
+    try:
+        registry_client = get_registry_client(client_slug)
+    except Exception as exc:
+        print(f"[CLIENT REGISTRY WARNING] detail lookup failed for {client_slug}: {exc}")
+
+    config = registry_client.get("config") if registry_client else load_client_config(client_slug)
+    prompt = registry_client.get("prompt") if registry_client else ""
     prompt_path = _prompt_path(client_slug)
-    if prompt_path.exists():
+    if not prompt and prompt_path.exists():
         prompt = prompt_path.read_text(encoding="utf-8")
 
-    embed = ""
+    embed = registry_client.get("embed") if registry_client else ""
     embed_path = _embed_path(client_slug)
-    if embed_path.exists():
+    if not embed and embed_path.exists():
         embed = embed_path.read_text(encoding="utf-8")
 
     return {
@@ -210,9 +214,7 @@ def create_client(
     )
 
     prompt_path = _prompt_path(client_slug)
-    if not prompt_path.exists():
-        prompt_path.write_text(
-            f"""Eres el asistente del sitio web de {name}.
+    default_prompt = f"""Eres el asistente del sitio web de {name}.
 
 Tu función es responder dudas, capturar datos importantes y mantener continuidad dentro de la conversación.
 
@@ -221,14 +223,23 @@ Reglas:
 - No repitas preguntas si el usuario ya dio la información
 - Si falta información, pide solo el siguiente dato más importante
 - No inventes información
-""",
+"""
+    if not prompt_path.exists():
+        prompt_path.write_text(
+            default_prompt,
             encoding="utf-8",
         )
 
     widget_title = title or f"Asistente {name}"
     embed = _embed_code(client_slug, client_key, widget_title, primary_color)
     _embed_path(client_slug).write_text(embed, encoding="utf-8")
-    _upsert_client_registry(client_slug)
+    prompt = prompt_path.read_text(encoding="utf-8") if prompt_path.exists() else default_prompt
+    _upsert_client_registry_payload(
+        client_slug=client_slug,
+        config=config,
+        prompt=prompt,
+        embed=embed,
+    )
 
     return {
         "client_slug": client_slug,
@@ -243,7 +254,8 @@ def update_client_config(
     enabled: bool | None = None,
     rate_limit_per_minute: int | None = None,
 ):
-    config = load_client_config(client_slug)
+    detail = get_client_detail(client_slug)
+    config = detail["config"]
 
     if allowed_origins is not None:
         config["allowed_origins"] = allowed_origins
@@ -256,7 +268,12 @@ def update_client_config(
         json.dumps(config, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
-    _upsert_client_registry(client_slug)
+    _upsert_client_registry_payload(
+        client_slug=client_slug,
+        config=config,
+        prompt=detail.get("prompt") or "",
+        embed=detail.get("embed") or "",
+    )
     return config
 
 

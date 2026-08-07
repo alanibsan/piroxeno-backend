@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 from fastapi import HTTPException, Request
 
 from app.config import settings
+from app.services.client_registry_service import get_registry_client
 
 
 CLIENTS_DIR = Path("clients")
@@ -23,6 +24,18 @@ def hash_key(value: str):
 
 
 def load_client_config(client_slug: str):
+    try:
+        registry_client = get_registry_client(client_slug)
+    except Exception as exc:
+        print(f"[CLIENT CONFIG WARNING] registry lookup failed for {client_slug}: {exc}")
+        registry_client = None
+
+    if registry_client:
+        config = registry_client.get("config") or {}
+        if not config.get("enabled", True):
+            raise HTTPException(status_code=403, detail="Client is disabled")
+        return config
+
     config_path = CLIENTS_DIR / client_slug / "config.json"
 
     if not config_path.exists():
