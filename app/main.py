@@ -4,6 +4,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.routes.admin import router as admin_router
+from app.routes.auth import router as auth_router
 from app.routes.chat import router as chat_router
 from app.core.logging_config import setup_logging
 from app.core.request_middleware import logging_middleware
@@ -31,6 +32,7 @@ app.add_middleware(
 
 # Routers
 app.include_router(chat_router)
+app.include_router(auth_router)
 app.include_router(admin_router)
 
 

@@ -5,22 +5,42 @@ para administrar clientes, dominios, licencias y consumo.
 
 ## Seguridad actual
 
-De momento usa un bearer token genérico:
+El portal usa login con email y contraseña:
+
+```http
+POST /auth/login
+```
+
+```json
+{
+  "email": "admin@piroxeno.com",
+  "password": "una_password_larga"
+}
+```
+
+La respuesta incluye un token temporal de sesión. El frontend debe enviar:
+
+```http
+Authorization: Bearer token_de_sesion
+```
+
+`ADMIN_API_TOKEN` queda solo como llave bootstrap/server-side para crear la
+primera cuenta admin o hacer mantenimiento desde scripts internos:
 
 ```env
 ADMIN_API_TOKEN=un_token_largo_y_aleatorio
 ```
 
-Todas las llamadas admin deben enviar:
+No pegues `ADMIN_API_TOKEN` en el navegador ni en variables `VITE_*`.
 
-```http
-Authorization: Bearer un_token_largo_y_aleatorio
+Para producción define también:
+
+```env
+ADMIN_SESSION_SECRET=otro_secreto_largo_y_aleatorio
 ```
 
-Esto es suficiente para una primera herramienta interna, pero para producción la
-mejor práctica es conectar el frontend a Supabase Auth y que el backend valide el
-JWT de Supabase. Luego el backend debe consultar `app_users` para saber si el
-usuario tiene rol `admin` o `user`.
+Corre `app/migrations/004_admin_password_auth.sql` en Supabase antes de crear
+usuarios con contraseña.
 
 ## Endpoints
 
@@ -78,7 +98,8 @@ POST /admin/users
   "email": "usuario@cliente.com",
   "role": "user",
   "client_slug": "avaluos",
-  "is_active": true
+  "is_active": true,
+  "password": "password_larga_temporal"
 }
 ```
 
@@ -89,7 +110,8 @@ Para un admin global:
   "email": "admin@piroxeno.com",
   "role": "admin",
   "client_slug": null,
-  "is_active": true
+  "is_active": true,
+  "password": "password_larga_temporal"
 }
 ```
 
@@ -97,21 +119,19 @@ Para un admin global:
 
 Best practices:
 
-- El frontend debe hacer login con Supabase Auth.
+- El frontend debe hacer login contra `/auth/login`.
 - No pongas `SUPABASE_SERVICE_ROLE_KEY` en el frontend nunca.
+- No pongas `ADMIN_API_TOKEN` en el frontend.
 - El frontend llama a tu backend API, no directo a tablas sensibles.
 - El backend valida permisos y usa `SUPABASE_SERVICE_ROLE_KEY` solo server-side.
 - Roles:
   - `admin`: puede crear clientes, editar whitelist, ver consumo global y crear usuarios.
   - `user`: solo puede ver el `client_slug` asignado.
-- Para el MVP puedes usar `ADMIN_API_TOKEN` solo en llamadas server-side:
-  API routes, server actions, backend propio o BFF. No lo pongas en código que
-  llegue al navegador, ni siquiera como variable `NEXT_PUBLIC_*`.
 
 ## Flujo recomendado
 
-1. Admin inicia sesión en Piroxeno frontend.
-2. Frontend obtiene sesión de Supabase Auth.
+1. Admin inicia sesión en Piroxeno frontend con email/password.
+2. Frontend guarda el token temporal en `sessionStorage`.
 3. Frontend llama backend `/admin/*` con `Authorization`.
 4. Backend valida rol.
 5. Backend crea carpeta/config/snippet del cliente y guarda metadata en Supabase.

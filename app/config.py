@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     require_widget_origin: bool = True
     default_rate_limit_per_minute: int = 30
     admin_api_token: str | None = None
+    admin_session_secret: str | None = None
+    admin_session_hours: int = 12
 
     # Optional legacy settings used only by the old Supabase-backed routes.
     supabase_url: str | None = None

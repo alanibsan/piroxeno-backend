@@ -5,6 +5,7 @@ from pathlib import Path
 
 from app.config import settings
 from app.db import get_supabase
+from app.services.auth_service import hash_password
 from app.services.client_config import load_client_config
 
 
@@ -234,17 +235,25 @@ def list_users():
     return response.data or []
 
 
-def upsert_user(email: str, role: str, client_slug: str | None, is_active: bool = True):
+def upsert_user(
+    email: str,
+    role: str,
+    client_slug: str | None,
+    is_active: bool = True,
+    password: str | None = None,
+):
     supabase = get_supabase()
     if supabase is None:
         raise RuntimeError("Supabase is not configured")
 
     payload = {
-        "email": email,
+        "email": email.lower().strip(),
         "role": role,
         "client_slug": client_slug,
         "is_active": is_active,
     }
+    if password:
+        payload["password_hash"] = hash_password(password)
 
     response = (
         supabase.table("app_users")

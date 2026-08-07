@@ -36,6 +36,7 @@ class UpsertUserRequest(BaseModel):
     role: str = Field(pattern=r"^(admin|user)$")
     client_slug: str | None = Field(default=None, pattern=r"^[a-zA-Z0-9_-]+$")
     is_active: bool = True
+    password: str | None = Field(default=None, min_length=10)
 
 
 @router.get("/clients")
@@ -90,5 +91,6 @@ def admin_upsert_user(body: UpsertUserRequest):
             role=body.role,
             client_slug=body.client_slug,
             is_active=body.is_active,
+            password=body.password,
         )
     }
