@@ -6,8 +6,11 @@ from app.services.admin_service import (
     create_client,
     get_client_detail,
     get_client_usage,
+    list_client_registry,
     list_clients,
     list_users,
+    publish_local_clients_to_registry,
+    sync_clients_from_registry,
     update_client_config,
     upsert_user,
 )
@@ -42,6 +45,21 @@ class UpsertUserRequest(BaseModel):
 @router.get("/clients")
 def admin_list_clients():
     return {"clients": list_clients()}
+
+
+@router.get("/client-registry")
+def admin_list_client_registry():
+    return {"clients": list_client_registry()}
+
+
+@router.post("/clients/sync-from-registry")
+def admin_sync_clients_from_registry():
+    return sync_clients_from_registry()
+
+
+@router.post("/client-registry/publish-local")
+def admin_publish_local_clients_to_registry():
+    return publish_local_clients_to_registry()
 
 
 @router.post("/clients")

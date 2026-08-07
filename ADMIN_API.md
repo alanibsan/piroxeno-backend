@@ -91,6 +91,35 @@ Ver consumo:
 GET /admin/clients/{client_slug}/usage
 ```
 
+Sincronizar clientes desde Supabase hacia las carpetas locales:
+
+```http
+POST /admin/clients/sync-from-registry
+```
+
+Publicar carpetas locales hacia Supabase:
+
+```http
+POST /admin/client-registry/publish-local
+```
+
+O desde dev/local:
+
+```bash
+venv/bin/python scripts/sync_clients_from_registry.py
+```
+
+Para subir los clientes locales actuales al registry:
+
+```bash
+venv/bin/python scripts/publish_local_clients_to_registry.py
+```
+
+Para automatizarlo diario en tu máquina/dev server, programa ese comando con
+cron, launchd, GitHub Actions o el scheduler que uses. Producción guarda cada
+cliente nuevo o cambio de configuración en `client_registry`, y dev puede
+regenerar sus carpetas desde ahí.
+
 Crear o actualizar permiso de usuario:
 
 ```http

@@ -2,6 +2,7 @@ import hashlib
 import json
 import secrets
 from pathlib import Path
+from typing import Any
 
 from app.config import settings
 from app.db import get_supabase
@@ -47,8 +48,73 @@ def _embed_code(client_slug: str, client_key: str, title: str, color: str):
 """
 
 
+def _read_json_file(path: Path, fallback: dict[str, Any]):
+    if not path.exists():
+        return fallback
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return fallback
+
+
+def _registry_row_from_files(client_slug: str):
+    config_path = _config_path(client_slug)
+    prompt_path = _prompt_path(client_slug)
+    embed_path = _embed_path(client_slug)
+
+    if not config_path.exists() and not prompt_path.exists():
+        return None
+
+    config = _read_json_file(config_path, {})
+    return {
+        "client_slug": client_slug,
+        "config": config,
+        "prompt": prompt_path.read_text(encoding="utf-8") if prompt_path.exists() else "",
+        "embed": embed_path.read_text(encoding="utf-8") if embed_path.exists() else "",
+    }
+
+
+def _upsert_client_registry(client_slug: str):
+    supabase = get_supabase()
+    if supabase is None:
+        return None
+
+    payload = _registry_row_from_files(client_slug)
+    if payload is None:
+        return None
+
+    try:
+        response = (
+            supabase.table("client_registry")
+            .upsert(payload, on_conflict="client_slug")
+            .execute()
+        )
+        return response.data[0] if response.data else payload
+    except Exception as exc:
+        print(f"[CLIENT REGISTRY WARNING] client={client_slug} error={exc}")
+        return None
+
+
+def _list_registry_clients():
+    supabase = get_supabase()
+    if supabase is None:
+        return []
+
+    try:
+        response = (
+            supabase.table("client_registry")
+            .select("client_slug,config,prompt,embed,updated_at")
+            .order("client_slug")
+            .execute()
+        )
+        return response.data or []
+    except Exception as exc:
+        print(f"[CLIENT REGISTRY WARNING] list error={exc}")
+        return []
+
+
 def list_clients():
-    clients = []
+    clients_by_slug = {}
     for path in sorted(CLIENTS_DIR.iterdir()):
         if not path.is_dir():
             continue
@@ -66,21 +132,38 @@ def list_clients():
             except json.JSONDecodeError:
                 config = {"enabled": False, "config_error": "invalid_json"}
 
-        clients.append(
-            {
-                "client_slug": path.name,
-                "enabled": config.get("enabled", True),
-                "allowed_origins": config.get("allowed_origins", []),
-                "rate_limit_per_minute": config.get(
-                    "rate_limit_per_minute",
-                    settings.default_rate_limit_per_minute,
-                ),
-                "has_prompt": prompt_path.exists(),
-                "has_embed": (path / "embed.html").exists(),
-            }
-        )
+        clients_by_slug[path.name] = {
+            "client_slug": path.name,
+            "enabled": config.get("enabled", True),
+            "allowed_origins": config.get("allowed_origins", []),
+            "rate_limit_per_minute": config.get(
+                "rate_limit_per_minute",
+                settings.default_rate_limit_per_minute,
+            ),
+            "has_prompt": prompt_path.exists(),
+            "has_embed": (path / "embed.html").exists(),
+            "source": "local",
+        }
 
-    return clients
+    for row in _list_registry_clients():
+        config = row.get("config") or {}
+        slug = row["client_slug"]
+        clients_by_slug[slug] = {
+            **clients_by_slug.get(slug, {}),
+            "client_slug": slug,
+            "enabled": config.get("enabled", True),
+            "allowed_origins": config.get("allowed_origins", []),
+            "rate_limit_per_minute": config.get(
+                "rate_limit_per_minute",
+                settings.default_rate_limit_per_minute,
+            ),
+            "has_prompt": bool(row.get("prompt")) or clients_by_slug.get(slug, {}).get("has_prompt", False),
+            "has_embed": bool(row.get("embed")) or clients_by_slug.get(slug, {}).get("has_embed", False),
+            "source": "registry" if slug not in clients_by_slug else "local+registry",
+            "registry_updated_at": row.get("updated_at"),
+        }
+
+    return [clients_by_slug[key] for key in sorted(clients_by_slug)]
 
 
 def get_client_detail(client_slug: str):
@@ -145,6 +228,7 @@ Reglas:
     widget_title = title or f"Asistente {name}"
     embed = _embed_code(client_slug, client_key, widget_title, primary_color)
     _embed_path(client_slug).write_text(embed, encoding="utf-8")
+    _upsert_client_registry(client_slug)
 
     return {
         "client_slug": client_slug,
@@ -172,7 +256,51 @@ def update_client_config(
         json.dumps(config, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
+    _upsert_client_registry(client_slug)
     return config
+
+
+def list_client_registry():
+    return _list_registry_clients()
+
+
+def publish_local_clients_to_registry():
+    published = []
+    for path in sorted(CLIENTS_DIR.iterdir()):
+        if not path.is_dir():
+            continue
+        result = _upsert_client_registry(path.name)
+        if result is not None:
+            published.append(path.name)
+
+    return {
+        "published_count": len(published),
+        "clients": published,
+    }
+
+
+def sync_clients_from_registry():
+    rows = _list_registry_clients()
+    synced = []
+
+    for row in rows:
+        client_slug = row["client_slug"]
+        client_dir = _client_dir(client_slug)
+        client_dir.mkdir(parents=True, exist_ok=True)
+
+        config = row.get("config") or {}
+        _config_path(client_slug).write_text(
+            json.dumps(config, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        _prompt_path(client_slug).write_text(row.get("prompt") or "", encoding="utf-8")
+        _embed_path(client_slug).write_text(row.get("embed") or "", encoding="utf-8")
+        synced.append(client_slug)
+
+    return {
+        "synced_count": len(synced),
+        "clients": synced,
+    }
 
 
 def get_client_usage(client_slug: str):
