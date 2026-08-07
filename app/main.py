@@ -3,9 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
+from app.routes.admin import router as admin_router
 from app.routes.chat import router as chat_router
-from app.routes.metrics import router as metrics_router
-from app.routes.demo import router as demo_router
 from app.core.logging_config import setup_logging
 from app.core.request_middleware import logging_middleware
 
@@ -13,7 +12,7 @@ from app.core.request_middleware import logging_middleware
 # 🔥 Inicializar logging ANTES de crear app
 setup_logging()
 
-app = FastAPI(title="AI Chat SaaS", version="1.0")
+app = FastAPI(title="OpenAI Prompt Chatbot", version="1.0")
 
 # Static files (widget.js)
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -24,22 +23,15 @@ app.middleware("http")(logging_middleware)
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://piroxeno.com",
-        "https://www.piroxeno.com",
-        "https://api.piroxeno.com",
-        "http://localhost:5173",
-        "http://localhost:3000",
-    ],
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Routers
 app.include_router(chat_router)
-app.include_router(metrics_router)
-app.include_router(demo_router)
+app.include_router(admin_router)
 
 
 @app.get("/health")
@@ -53,7 +45,7 @@ def root():
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Piroxeno AI API</title>
+        <title>OpenAI Prompt Chatbot</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
             body {
@@ -97,12 +89,13 @@ def root():
     </head>
     <body>
         <div class="card">
-            <h1>🧠 Piroxeno AI API</h1>
+            <h1>OpenAI Prompt Chatbot</h1>
             <div class="status" id="status">
                 <span class="dot" style="background:#facc15;"></span>
                 Checking status...
             </div>
             <p>Endpoint: <code>POST /chat</code></p>
+            <p>Prompt: <code>clients/piroxeno/prompt.txt</code></p>
             <p>Health: <code>GET /health</code></p>
         </div>
 
@@ -124,15 +117,7 @@ def root():
                     `;
                 });
         </script>
-        <script 
-            src="http://api.piroxeno.com/static/widget.js"
-            data-api-key="rV76YaXDQx4DlYrTSIpGgo10Ku6cxYFrqX-Dy1E9jSc">
-        </script>
+        <script src="/static/widget.js" data-api-url=""></script>
     </body>
     </html>
     """
-
-
-from fastapi.responses import Response
-
-app.mount("/static", StaticFiles(directory="static"), name="static")

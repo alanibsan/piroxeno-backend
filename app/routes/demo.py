@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, EmailStr
 from typing import Optional
-from app.db import supabase
+from app.db import get_supabase
 import os
 import requests
 
@@ -22,6 +22,9 @@ class DemoRequest(BaseModel):
 async def request_demo(data: DemoRequest):
 
     try:
+        supabase = get_supabase()
+        if supabase is None:
+            raise HTTPException(status_code=503, detail="Supabase is not configured")
 
         # Insert lead into Supabase
         supabase.table("demo_requests").insert({
@@ -61,6 +64,9 @@ async def request_demo(data: DemoRequest):
             )
 
         return {"success": True}
+
+    except HTTPException:
+        raise
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

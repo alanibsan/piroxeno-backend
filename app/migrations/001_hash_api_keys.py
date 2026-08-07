@@ -1,4 +1,4 @@
-from app.db import supabase
+from app.db import get_supabase
 import hashlib
 
 
@@ -7,6 +7,11 @@ def hash_key(key: str) -> str:
 
 
 def run():
+    supabase = get_supabase()
+    if supabase is None:
+        print("Supabase is not configured.")
+        return
+
     print("Starting API key hash migration...")
 
     clients = supabase.table("clients").select("*").execute().data

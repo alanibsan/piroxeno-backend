@@ -1,3 +1,4 @@
+import asyncio
 from openai import OpenAI
 from app.core.semantic_search import search
 from app.config import settings
@@ -14,6 +15,7 @@ client = OpenAI(api_key=settings.openai_api_key)
 
 MAX_CHUNKS = 5
 MAX_CONTEXT_CHARS = 6000
+MAX_HISTORY_CHARS = 4000
 
 BASE_DIR = Path("clients")
 
@@ -25,13 +27,9 @@ def load_client_prompt(client_slug: str):
     if prompt_path.exists():
         return prompt_path.read_text(encoding="utf-8")
 
-    # fallback prompt
     return """
-Eres un asistente genérico. Este prompt solo se activa si el cliente no tiene un prompt personalizado o está fallando.
-
-INSTRUCCIONES OBLIGATORIAS:
-- Ahora mismo esto está en testing.
-- Solo responde exactamente con la palabra: TESTING
+Eres un asistente útil. Responde de forma clara, breve y honesta.
+Si no tienes suficiente información, dilo.
 """
 
 
@@ -74,12 +72,33 @@ def build_sources(chunks):
     return sources
 
 
-async def ask(client_id: str, question: str):
+def build_history(messages: list[dict]):
+    parts = []
+    total_chars = 0
+
+    for message in reversed(messages):
+        role = message.get("role")
+        content = message.get("content", "")
+
+        if role not in {"user", "assistant"} or not content:
+            continue
+
+        entry = f"{role}: {content}"
+        if total_chars + len(entry) > MAX_HISTORY_CHARS:
+            break
+
+        parts.append(entry)
+        total_chars += len(entry)
+
+    return "\n".join(reversed(parts))
+
+
+async def ask(client_id: str, question: str, history: list[dict] | None = None):
 
     start_time = time.time()
 
     request_id = get_request_id()
-    client_slug = get_client_slug()
+    client_slug = get_client_slug() or client_id
 
     logger.info(
         "rag_started",
@@ -89,7 +108,6 @@ async def ask(client_id: str, question: str):
         },
     )
 
-    # 🔎 verificar si existe vector store
     index, metadata = load_index(client_id)
 
     if index is None:
@@ -108,7 +126,6 @@ async def ask(client_id: str, question: str):
 
         chunks = search(client_id, question)
 
-    # ⚡ SI NO HAY CHUNKS → usar solo el prompt
     if not chunks:
 
         logger.info(
@@ -128,23 +145,33 @@ async def ask(client_id: str, question: str):
         sources = build_sources(chunks)
 
     client_prompt = load_client_prompt(client_slug)
+    conversation_history = build_history(history or [])
 
-    prompt = f"""
+    prompt = f"""Instrucciones del asistente:
 {client_prompt}
 
-Contexto:
-{context}
+Reglas de memoria conversacional:
+- Usa el historial para mantener continuidad dentro de esta conversación.
+- No vuelvas a pedir datos que el usuario ya dio, salvo que sean ambiguos o contradictorios.
+- Si el usuario corrige un dato anterior, toma como válido el dato más reciente.
 
-Pregunta:
-{question}
+Historial de esta conversación:
+{conversation_history or "No hay historial previo."}
 
-Respuesta:
-"""
+Contexto disponible:
+{context or "No hay contexto adicional."}
 
-    response = client.responses.create(
-        model="gpt-4.1-mini",
-        input=prompt,
-        temperature=0
+Pregunta del usuario:
+{question}"""
+
+    response = await asyncio.wait_for(
+        asyncio.to_thread(
+            client.responses.create,
+            model=settings.openai_model,
+            input=prompt,
+            temperature=0,
+        ),
+        timeout=settings.openai_timeout_seconds,
     )
 
     duration = (time.time() - start_time) * 1000

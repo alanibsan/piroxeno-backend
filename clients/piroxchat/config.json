@@ -1,0 +1,11 @@
+{
+  "enabled": true,
+  "embed_key_hash": "8aafae34b368a52b4602f8e70c7ce78d52147ba9524ec05e632c0044197a76be",
+  "allowed_origins": [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:8000",
+    "http://127.0.0.1:8001"
+  ],
+  "rate_limit_per_minute": 30
+}

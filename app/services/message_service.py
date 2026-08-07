@@ -1,4 +1,7 @@
-from app.db import supabase
+from app.db import get_supabase
+
+
+MAX_HISTORY_MESSAGES = 20
 
 
 def insert_message(
@@ -11,6 +14,10 @@ def insert_message(
     total_tokens: int | None = None,
     duration_ms: float | None = None,
 ):
+    supabase = get_supabase()
+    if supabase is None:
+        return
+
     supabase.table("messages").insert({
         "conversation_id": conversation_id,
         "client_slug": client_slug,
@@ -21,3 +28,21 @@ def insert_message(
         "total_tokens": total_tokens,
         "duration_ms": duration_ms,
     }).execute()
+
+
+def list_conversation_messages(conversation_id: str, limit: int = MAX_HISTORY_MESSAGES):
+    supabase = get_supabase()
+    if supabase is None:
+        return []
+
+    response = (
+        supabase
+        .table("messages")
+        .select("role, content, created_at")
+        .eq("conversation_id", conversation_id)
+        .order("created_at", desc=True)
+        .limit(limit)
+        .execute()
+    )
+
+    return list(reversed(response.data or []))

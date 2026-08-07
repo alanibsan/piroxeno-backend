@@ -1,7 +1,11 @@
-from app.db import supabase
+from app.db import get_supabase
 
 
 def get_or_create_conversation(client_slug: str, session_id: str):
+    supabase = get_supabase()
+    if supabase is None:
+        return None
+
     # Buscar conversación existente
     response = (
         supabase
@@ -28,3 +32,18 @@ def get_or_create_conversation(client_slug: str, session_id: str):
     )
 
     return insert_response.data[0]
+
+
+def reset_conversation(client_slug: str, session_id: str):
+    supabase = get_supabase()
+    if supabase is None:
+        return
+
+    conversation = get_or_create_conversation(client_slug, session_id)
+    if not conversation:
+        return
+
+    supabase.table("messages").delete().eq(
+        "conversation_id",
+        conversation["id"],
+    ).execute()

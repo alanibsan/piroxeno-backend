@@ -3,16 +3,13 @@
     if (window.PiroxenoWidget) return;
     window.PiroxenoWidget = true;
 
-    const scriptTag = document.currentScript || document.querySelector('script[data-api-key]');
-    const apiKey = scriptTag ? scriptTag.getAttribute("data-api-key") : null;
-
-    if (!apiKey) {
-        console.error("Piroxeno: Missing data-api-key attribute.");
-        return;
-    }
-
-    const API_URL = scriptTag.getAttribute("data-api-url") || "https://api.piroxeno.com";
-    const PRIMARY_COLOR = "#22c55e";
+    const scriptTag = document.currentScript || document.querySelector("script[data-api-url]");
+    const API_URL = scriptTag.getAttribute("data-api-url") || "";
+    const CLIENT_SLUG = scriptTag.getAttribute("data-client-slug") || "piroxeno";
+    const CLIENT_KEY = scriptTag.getAttribute("data-client-key") || "";
+    const PRIMARY_COLOR = scriptTag.getAttribute("data-primary-color") || "#22c55e";
+    const TITLE = scriptTag.getAttribute("data-title") || "AI Assistant";
+    let sessionId = null;
 
     const button = document.createElement("div");
     button.style.position = "fixed";
@@ -70,7 +67,7 @@ background:#22c55e;
 border-radius:50%;
 "></div>
 
-Piroxeno Assistant
+${TITLE}
 
 </div>
 
@@ -122,7 +119,7 @@ padding:6px;
 color:#94a3b8;
 border-top:1px solid rgba(255,255,255,0.05);
 ">
-Powered by Piroxeno
+Powered by OpenAI
 </div>
 `;
 
@@ -183,9 +180,13 @@ Powered by Piroxeno
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "x-api-key": apiKey
+                    "x-client-key": CLIENT_KEY
                 },
-                body: JSON.stringify({ question })
+                body: JSON.stringify({
+                    question,
+                    client_slug: CLIENT_SLUG,
+                    session_id: sessionId
+                })
             });
 
             if (!res.ok) {
@@ -193,6 +194,7 @@ Powered by Piroxeno
             }
 
             const data = await res.json();
+            sessionId = data.session_id || sessionId;
 
             loading.remove();
             addMessage(data.answer || "No response.", "bot");

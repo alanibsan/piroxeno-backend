@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "embed_key_hash": "65769e872e1f0cc057fa08ef55631ed3f81bfa6e1be6d0fe792eea569f97eace",
+  "allowed_origins": [
+    "https://piroxeno.com",
+    "https://www.piroxeno.com",
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:8000",
+    "http://127.0.0.1:8001"
+  ],
+  "rate_limit_per_minute": 30
+}

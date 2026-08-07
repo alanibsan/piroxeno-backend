@@ -1,8 +1,17 @@
 from datetime import datetime
-from app.db import supabase
+from app.db import get_supabase
 
 
 def get_client_metrics(client_slug: str):
+    supabase = get_supabase()
+    if supabase is None:
+        return {
+            "total_messages": 0,
+            "total_tokens": 0,
+            "avg_latency_ms": 0,
+            "messages_this_month": 0,
+        }
+
     # Total mensajes (solo assistant para métricas reales)
     total_response = (
         supabase
