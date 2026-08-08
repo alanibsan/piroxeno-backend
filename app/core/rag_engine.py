@@ -9,6 +9,7 @@ from app.core.vector_store import load_index
 
 from app.core.request_context import get_request_id, get_client_slug
 from app.services.client_registry_service import get_registry_client
+from app.services.lead_service import lead_capture_instructions
 
 logger = logging.getLogger("rag")
 
@@ -40,6 +41,20 @@ def load_client_prompt(client_slug: str):
 Eres un asistente útil. Responde de forma clara, breve y honesta.
 Si no tienes suficiente información, dilo.
 """
+
+
+def load_client_registry_context(client_slug: str):
+    try:
+        registry_client = get_registry_client(client_slug)
+    except Exception as exc:
+        print(f"[PROMPT WARNING] registry lookup failed for {client_slug}: {exc}")
+        registry_client = None
+
+    config = registry_client.get("config") if registry_client else {}
+    prompt = registry_client.get("prompt") if registry_client else None
+    if not prompt:
+        prompt = load_client_prompt(client_slug)
+    return prompt, config or {}
 
 
 def build_context(chunks):
@@ -158,7 +173,12 @@ async def ask(
         context = build_context(chunks[:MAX_CHUNKS])
         sources = build_sources(chunks)
 
-    client_prompt = prompt_override or load_client_prompt(client_slug)
+    if prompt_override:
+        client_prompt = prompt_override
+        client_config = {}
+    else:
+        client_prompt, client_config = load_client_registry_context(client_slug)
+        client_prompt = f"{client_prompt}{lead_capture_instructions(client_config)}"
     conversation_history = build_history(history or [])
 
     prompt = f"""Instrucciones del asistente:

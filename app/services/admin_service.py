@@ -116,7 +116,8 @@ def _list_registry_clients():
 
 def list_clients():
     clients_by_slug = {}
-    for path in sorted(CLIENTS_DIR.iterdir()):
+    local_paths = sorted(CLIENTS_DIR.iterdir()) if CLIENTS_DIR.exists() else []
+    for path in local_paths:
         if not path.is_dir():
             continue
 
@@ -141,6 +142,7 @@ def list_clients():
                 "rate_limit_per_minute",
                 settings.default_rate_limit_per_minute,
             ),
+            "lead_columns": config.get("lead_columns", []),
             "has_prompt": prompt_path.exists(),
             "has_embed": (path / "embed.html").exists(),
             "source": "local",
@@ -158,6 +160,7 @@ def list_clients():
                 "rate_limit_per_minute",
                 settings.default_rate_limit_per_minute,
             ),
+            "lead_columns": config.get("lead_columns", []),
             "has_prompt": bool(row.get("prompt")) or clients_by_slug.get(slug, {}).get("has_prompt", False),
             "has_embed": bool(row.get("embed")) or clients_by_slug.get(slug, {}).get("has_embed", False),
             "source": "registry" if slug not in clients_by_slug else "local+registry",
@@ -257,6 +260,7 @@ def update_client_config(
     enabled: bool | None = None,
     rate_limit_per_minute: int | None = None,
     prompt: str | None = None,
+    lead_columns: list[dict[str, str]] | None = None,
 ):
     detail = get_client_detail(client_slug)
     config = detail["config"]
@@ -268,6 +272,8 @@ def update_client_config(
         config["enabled"] = enabled
     if rate_limit_per_minute is not None:
         config["rate_limit_per_minute"] = rate_limit_per_minute
+    if lead_columns is not None:
+        config["lead_columns"] = lead_columns
 
     _client_dir(client_slug).mkdir(parents=True, exist_ok=True)
     _config_path(client_slug).write_text(

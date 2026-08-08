@@ -242,6 +242,32 @@ def list_portal_conversations(
     ]
 
 
+def list_portal_leads(
+    user: dict,
+    client_slug: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    limit: int = 200,
+):
+    supabase = get_supabase()
+    scoped_client = _allowed_client_slug(user, client_slug)
+    if supabase is None:
+        return []
+
+    start = _parse_date(start_date)
+    end = _parse_date(end_date, end_of_day=True)
+
+    query = supabase.table("leads").select("*").order("created_at", desc=True).limit(limit)
+    if scoped_client:
+        query = query.eq("client_slug", scoped_client)
+    if start:
+        query = query.gte("created_at", start)
+    if end:
+        query = query.lt("created_at", end)
+
+    return query.execute().data or []
+
+
 def get_portal_conversation_messages(user: dict, conversation_id: str):
     supabase = get_supabase()
     if supabase is None:

@@ -5,6 +5,7 @@ from app.core.admin_auth import require_user
 from app.services.portal_service import (
     get_portal_conversation_messages,
     get_portal_docs,
+    list_portal_leads,
     get_portal_summary,
     list_portal_clients,
     list_portal_conversations,
@@ -73,6 +74,27 @@ def portal_conversation_messages(
 ):
     portal_user = resolve_portal_user(user, impersonate_user_id)
     return get_portal_conversation_messages(portal_user, conversation_id)
+
+
+@router.get("/leads")
+def portal_leads(
+    client_slug: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    limit: int = 200,
+    impersonate_user_id: str | None = None,
+    user: dict = Depends(require_user),
+):
+    portal_user = resolve_portal_user(user, impersonate_user_id)
+    return {
+        "leads": list_portal_leads(
+            portal_user,
+            client_slug=client_slug,
+            start_date=start_date,
+            end_date=end_date,
+            limit=limit,
+        )
+    }
 
 
 @router.get("/docs")

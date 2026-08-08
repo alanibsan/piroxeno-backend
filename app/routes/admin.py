@@ -33,6 +33,7 @@ class UpdateClientConfigRequest(BaseModel):
     enabled: bool | None = None
     rate_limit_per_minute: int | None = None
     prompt: str | None = None
+    lead_columns: list[dict[str, str]] | None = None
 
 
 class UpsertUserRequest(BaseModel):
@@ -89,6 +90,7 @@ def admin_update_client_config(client_slug: str, body: UpdateClientConfigRequest
             enabled=body.enabled,
             rate_limit_per_minute=body.rate_limit_per_minute,
             prompt=body.prompt,
+            lead_columns=body.lead_columns,
         )
     }
 

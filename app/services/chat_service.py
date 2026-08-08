@@ -1,12 +1,13 @@
 import uuid
 
-from app.core.rag_engine import ask
+from app.core.rag_engine import ask, load_client_registry_context
 from app.services.conversation_service import (
     get_or_create_conversation,
     reset_conversation,
 )
 from app.services.message_service import insert_message, list_conversation_messages
 from app.services.session_memory import load_messages, reset_session, save_messages
+from app.services.lead_service import capture_lead_from_conversation
 
 
 async def handle_chat(
@@ -65,6 +66,19 @@ async def handle_chat(
             )
         except Exception as e:
             print(f"[MEMORY WARNING] could not save Supabase messages: {e}")
+
+    try:
+        prompt, config = load_client_registry_context(client_slug)
+        await capture_lead_from_conversation(
+            client_slug=client_slug,
+            conversation_id=conversation["id"] if conversation else None,
+            session_id=session_id,
+            config=config,
+            prompt=prompt,
+            history=history,
+        )
+    except Exception as e:
+        print(f"[LEAD WARNING] could not capture lead: {e}")
 
     return {
         "answer": answer,
