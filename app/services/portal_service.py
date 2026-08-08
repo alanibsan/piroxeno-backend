@@ -71,8 +71,8 @@ def get_portal_summary(
     scoped_client = _allowed_client_slug(user, client_slug)
     if supabase is None:
         if scoped_client:
-            return {"scope": scoped_client, **get_client_usage(scoped_client)}
-        return {"scope": "global", "conversation_count": 0, "message_count": 0, "total_tokens": 0}
+            return {"scope": scoped_client, **get_client_usage(scoped_client), "activity_30d": []}
+        return {"scope": "global", "conversation_count": 0, "message_count": 0, "total_tokens": 0, "activity_30d": []}
 
     start = _parse_date(start_date)
     end = _parse_date(end_date, end_of_day=True)
@@ -110,6 +110,29 @@ def get_portal_summary(
         stats["messages"] += 1
         stats["tokens"] += message.get("total_tokens") or 0
 
+    today = datetime.now(timezone.utc).date()
+    activity_start = today - timedelta(days=29)
+    activity_query = supabase.table("messages").select("client_slug,total_tokens,created_at").gte(
+        "created_at",
+        datetime.combine(activity_start, datetime.min.time(), tzinfo=timezone.utc).isoformat(),
+    )
+    if scoped_client:
+        activity_query = activity_query.eq("client_slug", scoped_client)
+    activity_messages = activity_query.execute().data or []
+    activity_by_day = {
+        (activity_start + timedelta(days=offset)).isoformat(): {"messages": 0, "tokens": 0}
+        for offset in range(30)
+    }
+    for message in activity_messages:
+        created_at = message.get("created_at")
+        if not created_at:
+            continue
+        day = datetime.fromisoformat(created_at.replace("Z", "+00:00")).date().isoformat()
+        if day not in activity_by_day:
+            continue
+        activity_by_day[day]["messages"] += 1
+        activity_by_day[day]["tokens"] += message.get("total_tokens") or 0
+
     return {
         "scope": scoped_client or "global",
         "conversation_count": len(conversations),
@@ -119,6 +142,10 @@ def get_portal_summary(
         "total_tokens": total_tokens,
         "avg_latency_ms": avg_latency_ms,
         "by_client": sorted(by_client.values(), key=lambda item: item["messages"], reverse=True),
+        "activity_30d": [
+            {"date": day, **stats}
+            for day, stats in activity_by_day.items()
+        ],
     }
 
 

@@ -46,6 +46,22 @@ dedicado.
 Corre `app/migrations/004_admin_password_auth.sql` en Supabase antes de crear
 usuarios con contraseña.
 
+Para enviar invitaciones por correo al crear usuarios, configura SMTP en el
+backend de producción:
+
+```env
+PUBLIC_APP_URL=https://piroxeno.com
+SMTP_HOST=smtp.tu-proveedor.com
+SMTP_PORT=587
+SMTP_USERNAME=usuario_smtp
+SMTP_PASSWORD=password_smtp
+SMTP_FROM_EMAIL=no-reply@piroxeno.com
+SMTP_FROM_NAME=Piroxeno
+```
+
+Si `SMTP_HOST` no está configurado, el usuario se crea igual, pero el correo de
+invitación se omite y el backend lo deja registrado en logs.
+
 ## Endpoints
 
 Listar clientes:

@@ -4,10 +4,13 @@ import secrets
 from pathlib import Path
 from typing import Any
 
+from fastapi import HTTPException
+
 from app.config import settings
 from app.db import get_supabase
 from app.services.auth_service import hash_password
 from app.services.client_config import load_client_config
+from app.services.email_service import send_invitation_email
 from app.services.client_registry_service import (
     get_registry_client,
     list_registry_clients,
@@ -391,10 +394,14 @@ def upsert_user(
     if supabase is None:
         raise RuntimeError("Supabase is not configured")
 
+    normalized_client_slug = client_slug or None
+    if role == "admin" and normalized_client_slug:
+        raise HTTPException(status_code=400, detail="Admin users must be global")
+
     payload = {
         "email": email.lower().strip(),
         "role": role,
-        "client_slug": client_slug,
+        "client_slug": normalized_client_slug,
         "is_active": is_active,
     }
     if password:
@@ -405,4 +412,12 @@ def upsert_user(
         .upsert(payload, on_conflict="email")
         .execute()
     )
-    return response.data[0] if response.data else payload
+    user = response.data[0] if response.data else payload
+    if password:
+        user["_invitation_email_sent"] = send_invitation_email(
+            email=user["email"],
+            temporary_password=password,
+            role=role,
+            client_slug=normalized_client_slug,
+        )
+    return user
