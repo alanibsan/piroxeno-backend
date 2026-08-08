@@ -1,9 +1,12 @@
+from typing import Optional
+from html import escape
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+
+from app.config import settings
 from app.db import get_supabase
-import os
-import requests
+from app.services.email_service import send_html_email
 
 router = APIRouter()
 
@@ -39,28 +42,17 @@ async def request_demo(data: DemoRequest):
 
         # Only send email if full form was submitted
         if data.first_name:
-
-            resend_key = os.getenv("RESEND_API_KEY")
-
-            requests.post(
-                "https://api.resend.com/emails",
-                headers={
-                    "Authorization": f"Bearer {resend_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "from": "Demo Request <alan@leads.piroxeno.com>",
-                    "to": "ibarrasantoyo.a@gmail.com",
-                    "subject": "🚀 New Demo Request",
-                    "html": f"""
-                    <h2>New Demo Request</h2>
-                    <p><strong>Name:</strong> {data.first_name} {data.last_name}</p>
-                    <p><strong>Email:</strong> {data.email}</p>
-                    <p><strong>Phone:</strong> {data.phone}</p>
-                    <p><strong>Company:</strong> {data.company}</p>
-                    <p><strong>Job Title:</strong> {data.job_title}</p>
-                    """
-                }
+            send_html_email(
+                to_email=settings.demo_notification_email,
+                subject="New Demo Request",
+                html=f"""
+                <h2>New Demo Request</h2>
+                <p><strong>Name:</strong> {escape(data.first_name or "")} {escape(data.last_name or "")}</p>
+                <p><strong>Email:</strong> {escape(data.email)}</p>
+                <p><strong>Phone:</strong> {escape(data.phone or "")}</p>
+                <p><strong>Company:</strong> {escape(data.company or "")}</p>
+                <p><strong>Job Title:</strong> {escape(data.job_title or "")}</p>
+                """,
             )
 
         return {"success": True}

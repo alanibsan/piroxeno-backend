@@ -2,8 +2,6 @@ import smtplib
 from email.message import EmailMessage
 from html import escape
 
-import requests
-
 from app.config import settings
 
 
@@ -54,49 +52,17 @@ Rol: {role}
     return {"login_url": login_url, "client_label": client_label, "text": text, "html": html}
 
 
-def _send_with_resend(email: str, html: str):
-    response = requests.post(
-        "https://api.resend.com/emails",
-        headers={
-            "Authorization": f"Bearer {settings.resend_api_key}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "from": settings.resend_from_email,
-            "to": email,
-            "subject": "Te han invitado a Piroxeno",
-            "html": html,
-        },
-        timeout=12,
-    )
-    response.raise_for_status()
-
-
-def send_invitation_email(
-    email: str,
-    temporary_password: str,
-    role: str,
-    client_slug: str | None,
-):
-    content = _invitation_content(email, temporary_password, role, client_slug)
-
-    if settings.resend_api_key:
-        try:
-            _send_with_resend(email, content["html"])
-            return True
-        except Exception as exc:
-            print(f"[EMAIL WARNING] could not send invitation email with Resend: {exc}")
-
+def send_html_email(to_email: str, subject: str, html: str, text: str | None = None):
     if not settings.smtp_host:
-        print("[EMAIL WARNING] Email provider is not configured; invitation email was skipped")
+        print("[EMAIL WARNING] SMTP is not configured; email was skipped")
         return False
 
     message = EmailMessage()
-    message["Subject"] = "Te han invitado a Piroxeno"
+    message["Subject"] = subject
     message["From"] = f"{settings.smtp_from_name} <{settings.smtp_from_email}>"
-    message["To"] = email
-    message.set_content(content["text"])
-    message.add_alternative(content["html"], subtype="html")
+    message["To"] = to_email
+    message.set_content(text or "Abre este correo en un cliente compatible con HTML.")
+    message.add_alternative(html, subtype="html")
 
     try:
         if settings.smtp_port == 465:
@@ -112,5 +78,20 @@ def send_invitation_email(
                 smtp.send_message(message)
         return True
     except Exception as exc:
-        print(f"[EMAIL WARNING] could not send invitation email: {exc}")
+        print(f"[EMAIL WARNING] could not send email: {exc}")
         return False
+
+
+def send_invitation_email(
+    email: str,
+    temporary_password: str,
+    role: str,
+    client_slug: str | None,
+):
+    content = _invitation_content(email, temporary_password, role, client_slug)
+    return send_html_email(
+        to_email=email,
+        subject="Te han invitado a Piroxeno",
+        html=content["html"],
+        text=content["text"],
+    )

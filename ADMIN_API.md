@@ -46,16 +46,8 @@ dedicado.
 Corre `app/migrations/004_admin_password_auth.sql` en Supabase antes de crear
 usuarios con contraseña.
 
-Para enviar invitaciones por correo al crear usuarios, el backend usa Resend si
-existe `RESEND_API_KEY`:
-
-```env
-PUBLIC_APP_URL=https://piroxeno.com
-RESEND_API_KEY=re_xxxxx
-RESEND_FROM_EMAIL=Piroxeno <alan@leads.piroxeno.com>
-```
-
-También puedes configurar SMTP como fallback:
+Para enviar invitaciones por correo al crear usuarios y recibir notificaciones
+de demos, configura SMTP en el backend de producción:
 
 ```env
 PUBLIC_APP_URL=https://piroxeno.com
@@ -65,10 +57,11 @@ SMTP_USERNAME=usuario_smtp
 SMTP_PASSWORD=password_smtp
 SMTP_FROM_EMAIL=no-reply@piroxeno.com
 SMTP_FROM_NAME=Piroxeno
+DEMO_NOTIFICATION_EMAIL=tu_correo@piroxeno.com
 ```
 
-Si no existe `RESEND_API_KEY` ni `SMTP_HOST`, el usuario se crea igual, pero el
-correo de invitación se omite y el backend lo deja registrado en logs.
+Si `SMTP_HOST` no está configurado, el usuario se crea igual, pero el correo de
+invitación o notificación se omite y el backend lo deja registrado en logs.
 
 ## Endpoints
 
