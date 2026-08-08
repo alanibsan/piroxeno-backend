@@ -389,17 +389,29 @@ def upsert_user(
     client_slug: str | None,
     is_active: bool = True,
     password: str | None = None,
+    actor_email: str | None = None,
 ):
     supabase = get_supabase()
     if supabase is None:
         raise RuntimeError("Supabase is not configured")
 
+    normalized_email = email.lower().strip()
     normalized_client_slug = client_slug or None
+    normalized_owner_email = settings.owner_email.lower().strip()
+    normalized_actor_email = (actor_email or "").lower().strip()
+
     if role == "admin" and normalized_client_slug:
         raise HTTPException(status_code=400, detail="Admin users must be global")
+    if not normalized_client_slug and role != "admin":
+        raise HTTPException(status_code=400, detail="Global users must be admins")
+    if normalized_email == normalized_owner_email:
+        if normalized_actor_email != normalized_owner_email:
+            raise HTTPException(status_code=403, detail="Only the owner can update the owner account")
+        if not is_active or role != "admin" or normalized_client_slug:
+            raise HTTPException(status_code=400, detail="Owner account must stay active and global admin")
 
     payload = {
-        "email": email.lower().strip(),
+        "email": normalized_email,
         "role": role,
         "client_slug": normalized_client_slug,
         "is_active": is_active,

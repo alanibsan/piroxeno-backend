@@ -46,6 +46,11 @@ dedicado.
 Corre `app/migrations/004_admin_password_auth.sql` en Supabase antes de crear
 usuarios con contraseña.
 
+Corre también `app/migrations/006_promote_global_users_to_admin.sql` para que
+las cuentas globales existentes pasen a ser admins. La separación entre
+empleados y clientes vive en la misma tabla `app_users`: empleados/admins tienen
+`client_slug = null`; usuarios de clientes tienen `client_slug` asignado.
+
 Para enviar invitaciones por correo al crear usuarios y recibir notificaciones
 de demos, configura SMTP en el backend de producción:
 

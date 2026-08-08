@@ -102,7 +102,7 @@ def admin_list_users():
 
 
 @router.post("/users")
-def admin_upsert_user(body: UpsertUserRequest):
+def admin_upsert_user(body: UpsertUserRequest, admin_user: dict = Depends(require_admin)):
     return {
         "user": upsert_user(
             email=body.email,
@@ -110,5 +110,6 @@ def admin_upsert_user(body: UpsertUserRequest):
             client_slug=body.client_slug,
             is_active=body.is_active,
             password=body.password,
+            actor_email=admin_user.get("email"),
         )
     }

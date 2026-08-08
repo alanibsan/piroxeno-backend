@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     admin_api_token: str | None = None
     admin_session_secret: str | None = None
     admin_session_hours: int = 12
+    owner_email: str = "alan@piroxeno.com"
     public_app_url: str = "https://piroxeno.com"
     smtp_host: str | None = None
     smtp_port: int = 587
