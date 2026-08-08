@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     smtp_password: str | None = None
     smtp_from_email: str = "no-reply@piroxeno.com"
     smtp_from_name: str = "Piroxeno"
+    resend_api_key: str | None = None
+    resend_from_email: str = "Piroxeno <alan@leads.piroxeno.com>"
 
     # Optional legacy settings used only by the old Supabase-backed routes.
     supabase_url: str | None = None
