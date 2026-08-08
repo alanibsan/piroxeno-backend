@@ -112,17 +112,39 @@ def get_portal_summary(
 
     today = datetime.now(timezone.utc).date()
     activity_start = today - timedelta(days=29)
-    activity_query = supabase.table("messages").select("client_slug,total_tokens,created_at").gte(
+    activity_messages_query = supabase.table("messages").select("client_slug,role,total_tokens,duration_ms,created_at").gte(
+        "created_at",
+        datetime.combine(activity_start, datetime.min.time(), tzinfo=timezone.utc).isoformat(),
+    )
+    activity_conversations_query = supabase.table("conversations").select("client_slug,created_at").gte(
         "created_at",
         datetime.combine(activity_start, datetime.min.time(), tzinfo=timezone.utc).isoformat(),
     )
     if scoped_client:
-        activity_query = activity_query.eq("client_slug", scoped_client)
-    activity_messages = activity_query.execute().data or []
+        activity_messages_query = activity_messages_query.eq("client_slug", scoped_client)
+        activity_conversations_query = activity_conversations_query.eq("client_slug", scoped_client)
+    activity_messages = activity_messages_query.execute().data or []
+    activity_conversations = activity_conversations_query.execute().data or []
     activity_by_day = {
-        (activity_start + timedelta(days=offset)).isoformat(): {"messages": 0, "tokens": 0}
+        (activity_start + timedelta(days=offset)).isoformat(): {
+            "conversations": 0,
+            "messages": 0,
+            "assistant_messages": 0,
+            "user_messages": 0,
+            "tokens": 0,
+            "avg_latency_ms": 0,
+            "_latencies": [],
+        }
         for offset in range(30)
     }
+    for conversation in activity_conversations:
+        created_at = conversation.get("created_at")
+        if not created_at:
+            continue
+        day = datetime.fromisoformat(created_at.replace("Z", "+00:00")).date().isoformat()
+        if day in activity_by_day:
+            activity_by_day[day]["conversations"] += 1
+
     for message in activity_messages:
         created_at = message.get("created_at")
         if not created_at:
@@ -132,6 +154,16 @@ def get_portal_summary(
             continue
         activity_by_day[day]["messages"] += 1
         activity_by_day[day]["tokens"] += message.get("total_tokens") or 0
+        if message.get("role") == "assistant":
+            activity_by_day[day]["assistant_messages"] += 1
+            if message.get("duration_ms") is not None:
+                activity_by_day[day]["_latencies"].append(float(message["duration_ms"]))
+        if message.get("role") == "user":
+            activity_by_day[day]["user_messages"] += 1
+
+    for stats in activity_by_day.values():
+        latencies_for_day = stats.pop("_latencies")
+        stats["avg_latency_ms"] = round(sum(latencies_for_day) / len(latencies_for_day), 2) if latencies_for_day else 0
 
     return {
         "scope": scoped_client or "global",
