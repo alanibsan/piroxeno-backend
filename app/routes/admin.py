@@ -32,6 +32,7 @@ class UpdateClientConfigRequest(BaseModel):
     allowed_origins: list[str] | None = None
     enabled: bool | None = None
     rate_limit_per_minute: int | None = None
+    prompt: str | None = None
 
 
 class UpsertUserRequest(BaseModel):
@@ -87,6 +88,7 @@ def admin_update_client_config(client_slug: str, body: UpdateClientConfigRequest
             allowed_origins=body.allowed_origins,
             enabled=body.enabled,
             rate_limit_per_minute=body.rate_limit_per_minute,
+            prompt=body.prompt,
         )
     }
 

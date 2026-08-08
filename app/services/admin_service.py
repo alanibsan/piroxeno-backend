@@ -256,9 +256,11 @@ def update_client_config(
     allowed_origins: list[str] | None = None,
     enabled: bool | None = None,
     rate_limit_per_minute: int | None = None,
+    prompt: str | None = None,
 ):
     detail = get_client_detail(client_slug)
     config = detail["config"]
+    next_prompt = prompt if prompt is not None else detail.get("prompt") or ""
 
     if allowed_origins is not None:
         config["allowed_origins"] = allowed_origins
@@ -267,14 +269,16 @@ def update_client_config(
     if rate_limit_per_minute is not None:
         config["rate_limit_per_minute"] = rate_limit_per_minute
 
+    _client_dir(client_slug).mkdir(parents=True, exist_ok=True)
     _config_path(client_slug).write_text(
         json.dumps(config, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
+    _prompt_path(client_slug).write_text(next_prompt, encoding="utf-8")
     _upsert_client_registry_payload(
         client_slug=client_slug,
         config=config,
-        prompt=detail.get("prompt") or "",
+        prompt=next_prompt,
         embed=detail.get("embed") or "",
     )
     return config
