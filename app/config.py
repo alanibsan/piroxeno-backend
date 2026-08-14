@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     smtp_from_email: str = "no-reply@piroxeno.com"
     smtp_from_name: str = "Piroxeno"
     demo_notification_email: str = "ibarrasantoyo.a@gmail.com"
+    analytics_ip_salt: str | None = None
 
     # Optional legacy settings used only by the old Supabase-backed routes.
     supabase_url: str | None = None
